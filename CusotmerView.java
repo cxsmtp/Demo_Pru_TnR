@@ -1,4 +1,4 @@
-import java.sql.*; ##com
+import java.sql.*; 
 import javax.swing.*;
 import java.awt.*;
 import javax.swing.border.*;
