@@ -11,6 +11,7 @@ class CustomerView extends JPanel implements ActionListener
 	public JTable table;
 	Connection con;
         Statement stmt;
+        PreparedStatement pstmt;
         ResultSet rs;
 	LayoutManager lm = null;
 	String com = new String("Customer_ID");
@@ -72,45 +73,83 @@ class CustomerView extends JPanel implements ActionListener
 		return(ViewBill);
 		
 	}
+	// Helper method to validate column name against whitelist
+	private boolean isValidColumnName(String columnName) {
+		for(String field : filds) {
+			if(field.equals(columnName)) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	public void actionPerformed(ActionEvent e)
 	{	//setVisible(false);
-		String str = tf.getText();	
-		
+		String str = tf.getText();
+
 		String query;
 		String str1=null;
-				
-		
+
+
 		if(!str.equals(""))
 		{
+			// Use PreparedStatement with parameterized query to prevent SQL injection
+			// The column name is validated against a whitelist (filds array)
+			if(!isValidColumnName(com)) {
+				JOptionPane.showMessageDialog(this, "Invalid column selection.");
+				return;
+			}
+
 			if(com.equals("Customer_ID"))
 			{
-				int custstr = Integer.parseInt(str);
-				query = "SELECT * FROM Customer E WHERE E."+com+" = "+custstr;
-			}	
-			else	
-	 		{
-				str1 = "'"+str+"'";
-				query = "SELECT * FROM Customer E WHERE E."+com+" = "+str1;
+				int custstr;
+				try {
+					custstr = Integer.parseInt(str);
+				} catch(NumberFormatException nfe) {
+					JOptionPane.showMessageDialog(this, "Customer ID must be a valid number.");
+					return;
+				}
+				query = "SELECT * FROM Customer E WHERE E." + com + " = ?";
 			}
-			
-		}	
+			else
+	 		{
+				str1 = str;
+				query = "SELECT * FROM Customer E WHERE E." + com + " = ?";
+			}
+
+		}
 		else
 		{
 			query = "SELECT * FROM Customer";
 		}
 		System.out.println(str1);
 		try{
-			stmt = con.createStatement();
-			System.out.println(query);
-			rs = stmt.executeQuery(query);
-			displayResultSet(rs);
-			stmt.close();
+			// Use PreparedStatement instead of Statement to prevent SQL injection
+			if(!str.equals("")) {
+				pstmt = con.prepareStatement(query);
+				if(com.equals("Customer_ID")) {
+					int custstr = Integer.parseInt(str);
+					pstmt.setInt(1, custstr);
+				} else {
+					pstmt.setString(1, str);
+				}
+				System.out.println(query);
+				rs = pstmt.executeQuery();
+				displayResultSet(rs);
+				pstmt.close();
+			} else {
+				stmt = con.createStatement();
+				System.out.println(query);
+				rs = stmt.executeQuery(query);
+				displayResultSet(rs);
+				stmt.close();
+			}
 		}
 		catch(SQLException sqlx)
 		{
 			sqlx.printStackTrace();
 		}
-		
+
 	}
 	public void displayResultSet(ResultSet rs1)throws SQLException
 	{
